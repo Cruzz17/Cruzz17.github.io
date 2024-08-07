@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Mysql本身的不足：  MySQL 的 online DDL 带来的稳定性风险  基于 binlog 复制的多节点读写分离会有数据一致性问题  单表数据量承载能力有限，随着业务上升，消息表的数据量一直增加   OB优势： 1、因为 OB 的存储引擎使用了类 LSM Tree 设计，表的 scheme 也支持多个版本，所以在 在线DDL 已经不是问题，秒级即可完成并且不会锁表，可以放心的做此类操作">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hexo">
+<meta property="og:url" content="https://cruzz17.github.io/2024/08/06/MySQL%E6%95%B0%E6%8D%AE%E8%BF%81%E7%A7%BB%E5%88%B0OceanBase/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="Mysql本身的不足：  MySQL 的 online DDL 带来的稳定性风险  基于 binlog 复制的多节点读写分离会有数据一致性问题  单表数据量承载能力有限，随着业务上升，消息表的数据量一直增加   OB优势： 1、因为 OB 的存储引擎使用了类 LSM Tree 设计，表的 scheme 也支持多个版本，所以在 在线DDL 已经不是问题，秒级即可完成并且不会锁表，可以放心的做此类操作">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cruzz17.github.io/Users/chenwangyang/Documents/goCode/my-hexo-site/source/_posts/image2022-3-30_15-37-38.png">
+<meta property="og:image" content="https://cruzz17.github.io/Users/chenwangyang/Documents/goCode/my-hexo-site/source/_posts/image2022-3-29_10-32-48.png">
+<meta property="og:image" content="https://cruzz17.github.io/Users/chenwangyang/Documents/goCode/my-hexo-site/source/_posts/image2022-3-29_10-37-36.png">
+<meta property="article:published_time" content="2024-08-06T12:22:01.251Z">
+<meta property="article:modified_time" content="2024-08-06T12:22:01.251Z">
+<meta property="article:author" content="sanjin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cruzz17.github.io/Users/chenwangyang/Documents/goCode/my-hexo-site/source/_posts/image2022-3-30_15-37-38.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 7.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS 订阅"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="搜索"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://cruzz17.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-MySQL数据迁移到OceanBase" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2024/08/06/MySQL%E6%95%B0%E6%8D%AE%E8%BF%81%E7%A7%BB%E5%88%B0OceanBase/" class="article-date">
+  <time class="dt-published" datetime="2024-08-06T12:22:01.251Z" itemprop="datePublished">2024-08-06</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>Mysql本身的不足：</p>
+<ol>
+<li><p>MySQL 的 online DDL 带来的稳定性风险</p>
+</li>
+<li><p>基于 binlog 复制的多节点读写分离会有数据一致性问题</p>
+</li>
+<li><p>单表数据量承载能力有限，随着业务上升，消息表的数据量一直增加</p>
+</li>
+</ol>
+<p>OB优势：</p>
+<p>1、因为 OB 的存储引擎使用了类 LSM Tree 设计，表的 scheme 也支持多个版本，所以在 在线DDL 已经不是问题，秒级即可完成并且不会锁表，可以放心的做此类操作。</p>
+<p>2、使用优化的paxos协议结合物理日志复制保证多数派的数据一致性， 也就是三副本情况下强保证至少两个副本数据一致性，使用 OB 保证了 RTO＜30s，满足业务的数据一致性的要求。</p>
+<p>3、以 IM 业务为例，我们群组消息表保存两个月数据占用存储空间800G 左右，基本触达当前配置下的 MySQL 单表上线；同样的数据迁移到 OB 后数据量在200G 左右。实际测试下来IM主库压缩率在1&#x2F;3左右</p>
+<p>4、OB是share nothing 架构，每个副本都是对等节点，多数派副本可以保持一致性，从根本上保证主备切换是一个安全的操作，系统宕机30s内可以自动发现和切换到具备完整数据的副本上，保证服务连续可用</p>
+<p>OB的不足：</p>
+<p>1、分区建的设计需要根据业务特性定义，开发需要根据业务设计合理的分区建，否则会影响查询性能</p>
+<p>2、OB合并刷盘机制（会在业务低峰期，可配置）会影响插入和查询时间，大概10ms左右</p>
+<p>Mysql和OB部署架构图</p>
+<p>1、Mysql MHA Cluster部署</p>
+<p><img src="/Users/chenwangyang/Documents/goCode/my-hexo-site/source/_posts/image2022-3-30_15-37-38.png" alt="image-20240805155101049"></p>
+<p>2、OB三机房部署</p>
+<p>相关压测性能数据指标</p>
+<ol>
+<li>Mysql集群和ob集群分别通过 sysbench 导入 16 张表，每张表有 1000 万行数据。</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th><strong>read_write</strong></th>
+<th><strong>mysql 5.7.23</strong></th>
+<th><strong>ob(16</strong>张表都在单机房）**</th>
+<th><strong>ob(16</strong>张表部署在双机房）**</th>
+<th><strong>ob(16</strong>张表部署在三机房）**</th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Threads</strong></td>
+<td><strong>QPS</strong></td>
+<td><strong>95%  latency (ms)</strong></td>
+<td><strong>QPS</strong></td>
+<td><strong>95%  latency (ms)</strong></td>
+<td><strong>QPS</strong></td>
+<td><strong>95% latency (ms)</strong></td>
+<td><strong>QPS</strong></td>
+<td><strong>95% latency (ms)</strong></td>
+</tr>
+<tr>
+<td>150</td>
+<td>78268.66</td>
+<td>45.79</td>
+<td>76760</td>
+<td>49</td>
+<td>92685</td>
+<td>40</td>
+<td>89922</td>
+<td>40</td>
+</tr>
+<tr>
+<td>300</td>
+<td>85187.99</td>
+<td>101.13</td>
+<td>85336</td>
+<td>124</td>
+<td>121662</td>
+<td>86</td>
+<td>145456</td>
+<td>66</td>
+</tr>
+<tr>
+<td>600</td>
+<td>87068.84</td>
+<td>569.67</td>
+<td>104655</td>
+<td>184</td>
+<td>137061</td>
+<td>168</td>
+<td>177557</td>
+<td>93</td>
+</tr>
+<tr>
+<td>1200</td>
+<td>91627.88</td>
+<td>977.74</td>
+<td>115891</td>
+<td>277</td>
+<td>146951</td>
+<td>308</td>
+<td>197960</td>
+<td>241</td>
+</tr>
+<tr>
+<td>1500</td>
+<td>85861.23</td>
+<td>1235.62</td>
+<td>113291</td>
+<td>387</td>
+<td>149243</td>
+<td>430</td>
+<td>202863</td>
+<td>349</td>
+</tr>
+</tbody></table>
+<p>2、对比结果分析：</p>
+<p>对于混合读写的情况，在并发超过100以上时OB部署多机房的qps高于MySQL，响应时间和MySQL差不多，随着并发数量增加，OB的qps提升明显，响应时间也比Mysql低很多。</p>
+<p>目前线上的性能指标</p>
+<p>1、需要通过OCP（OB的监控管理工具）监控，目前还没有和hickwall打通</p>
+<p>2、响应时间（单位us）基本在1ms左右</p>
+<p><img src="/Users/chenwangyang/Documents/goCode/my-hexo-site/source/_posts/image2022-3-29_10-32-48.png" alt="image2022-3-29_10-32-48"></p>
+<p><img src="/Users/chenwangyang/Documents/goCode/my-hexo-site/source/_posts/image2022-3-29_10-37-36.png" alt="image-20240805154948720"></p>
+<p>1、业务迁移</p>
+<p>迁移原则：</p>
+<p>数据完整性和准确：保证数据不丢、不错；</p>
+<p>迁移平滑和迅速：服务敏感度，不停服；</p>
+<p>可回滚：遇到问题可随时切回mysql</p>
+<p>1）数据同步</p>
+<p>应用双写同步mysql数据到ob集群，DBA按照时间戳去对比mysql和ob两边数据的一致性，做数据一致性校验</p>
+<p>2）读写验证</p>
+<p>验证应用访问MYSQL和OB集群可以得到相同的结果，验证业务访问的准确性</p>
+<p>可以根据业务需要迁移部分读流量到OB 集群</p>
+<p>3）灰度切换</p>
+<p>调整双写开发</p>
+<p>将部分非核心业务的库表写操作迁移至OB集群，并双写至MYSQL，保证出问题，随时回滚</p>
+<p>当业务访问长时间正常，可以增加切换流量，进行灰度切换，建议观察一段时间，至少一个月</p>
+<p>4）迁移完成</p>
+<p>流量全部迁移完成，继续保持OB集群反向同步至MYSQL，继续观察一段时间，没有问题后，关闭反向双写</p>
+<p>迁移完成</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://cruzz17.github.io/2024/08/06/MySQL%E6%95%B0%E6%8D%AE%E8%BF%81%E7%A7%BB%E5%88%B0OceanBase/" data-id="clzjqtpic00008eexeqhd4zua" data-title="" class="article-share-link"><span class="fa fa-share">分享</span></a>
+      
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2024/08/06/hello-world/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">后一篇</strong>
+      <div class="article-nav-title">Hello World</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2024/08/">八月 2024</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2024/08/06/MySQL%E6%95%B0%E6%8D%AE%E8%BF%81%E7%A7%BB%E5%88%B0OceanBase/">(no title)</a>
+          </li>
+        
+          <li>
+            <a href="/2024/08/06/hello-world/">Hello World</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2024 sanjin<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
