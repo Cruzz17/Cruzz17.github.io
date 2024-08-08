@@ -27,7 +27,7 @@
 <meta property="og:description" content="一、背景为什么做万人大群？1.1 解决系统稳定性问题目前生产存在一百多个五百人以上的大群，在群比较活跃的情况下，系统 CPU 和内存指标会产生较大毛刺，影响系统稳定性。 1.2 用户有大群需求HR 等部门存在一些对于大群的需求，需要满足大量用户同时在线聊天或抢红包的场景。 万人群为何不能简单通过水平扩容解决？2.1 写扩散设计问题原有的写扩散设计中，消息需要按照 1:10000 的比例进行存储，这">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2024-08-07T12:17:23.000Z">
-<meta property="article:modified_time" content="2024-08-07T13:03:42.215Z">
+<meta property="article:modified_time" content="2024-08-08T03:04:51.693Z">
 <meta property="article:author" content="sanjin">
 <meta property="article:tag" content="技术">
 <meta name="twitter:card" content="summary_large_image">
@@ -236,7 +236,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          4k 字
+          3.9k 字
         
       </span>
     
@@ -319,51 +319,20 @@
 </ol>
 <p>对于不能进行缩减内容的主题，可以采用 qmq 框架提供的压缩功能。</p>
 <h3 id="5-2-优化订阅转发和离线推送服务"><a href="#5-2-优化订阅转发和离线推送服务" class="headerlink" title="5.2 优化订阅转发和离线推送服务"></a>5.2 优化订阅转发和离线推送服务</h3><ol>
-<li><strong>批量消费</strong>：100012835（订阅转发服务）和 100023553（离线推送服务）将 qmq 消息的消费方式改为批量消费，以加快 qmq 消息的处理。</li>
-<li><strong>减少 SOA 路由时间</strong>：100012835 中将用户信息查询由 SOA 调用的方式改为直接从 Redis 读取，通过 mget 一次性查询即可，节省了 SOA 路由时间。</li>
-<li><strong>支持批量查询</strong>：100023553 需要查询用户在线状态等数据，相关接口都需要支持批量查询，以提高查询效率。</li>
+<li><p><strong>批量消费</strong>：（订阅转发服务）和 （离线推送服务）将 qmq 消息的消费方式改为批量消费，以加快 qmq 消息的处理。</p>
+</li>
+<li><p><strong>减少 SOA 路由时间</strong>： 将用户信息查询由 SOA 调用的方式改为直接从 Redis 读取，通过 mget 一次性查询即可，节省了 SOA 路由时间。</p>
+</li>
+<li><p><strong>支持批量查询</strong>：查询用户在线状态等数据，相关接口都需要支持批量查询，以提高查询效率。</p>
+</li>
+<li><p><strong>下线无效调用</strong>：压测过程中发现下游 push 服务的压力很大，经排查发现有 50% 的调用是无效调用，无效调用删除后，减轻了下游 push 服务的压力。</p>
+</li>
+<li><p><strong>解决线程阻塞的问题</strong>：压测时发现系统线程存在 block 的情况，为提高系统的资源利用率，分析具体原因后逐一解决。</p>
+</li>
 </ol>
-<table>
-<thead>
-<tr>
-<th>应用</th>
-<th>接口</th>
-<th>功能</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>100012833</td>
-<td>batchgetuserblockconfig</td>
-<td>SOA 服务：黑名单查询</td>
-</tr>
-<tr>
-<td>100023646</td>
-<td>batchgetusersonline</td>
-<td>私有云：用户各端状态查询</td>
-</tr>
-<tr>
-<td>100029681</td>
-<td>batchgetusersonline</td>
-<td>阿里云：用户各端状态查询</td>
-</tr>
-<tr>
-<td>100028428</td>
-<td>batchgetuseronlinestatus</td>
-<td>私有云中转服务：各端状态查询</td>
-</tr>
-<tr>
-<td>100028430</td>
-<td>batchgetuseronlinestatus</td>
-<td>阿里云中转服务：各端状态查询</td>
-</tr>
-</tbody></table>
-<ol start="4">
-<li><strong>下线无效调用</strong>：压测过程中发现下游 push 服务的压力很大，经排查发现有 50% 的调用是无效调用，无效调用删除后，减轻了下游 push 服务的压力。</li>
-<li><strong>解决线程阻塞的问题</strong>：压测时发现系统线程存在 block 的情况，为提高系统的资源利用率，分析具体原因后逐一解决。</li>
-</ol>
-<h3 id="5-3-推动上游系统优化"><a href="#5-3-推动上游系统优化" class="headerlink" title="5.3 推动上游系统优化"></a>5.3 推动上游系统优化</h3><p>通过分析日志，发现离线推送服务与 trippal 业务服务，存在重复调用查询用户各端在线状态接口的情况，推动上游做技术改造，去除无效调用，简化了系统流程。</p>
+<h3 id="5-3-推动上游系统优化"><a href="#5-3-推动上游系统优化" class="headerlink" title="5.3 推动上游系统优化"></a>5.3 推动上游系统优化</h3><p>通过分析日志，发现离线推送服务与  业务服务，存在重复调用查询用户各端在线状态接口的情况，推动上游做技术改造，去除无效调用，简化了系统流程。</p>
 <p>通过以上措施的应用，提高了系统的吞吐能力，在不扩容的情况下，使订阅转发和离线推送系统的处理能力提升了 2.4 倍左右。</p>
-<h2 id="6-trippal-多账号消息分发重构"><a href="#6-trippal-多账号消息分发重构" class="headerlink" title="6. trippal 多账号消息分发重构"></a>6. trippal 多账号消息分发重构</h2><p>随着业务的发展，trippal 面向的受众不只是携程员工，还接入了许多供应商公司，因此底层消息系统需要处理多账户员工的消息分发，在做万人大群项目时，发现原有多账号消息分发的架构不合理，无法支撑万人大群的业务，因此对该部分进行了重构。</p>
+<h2 id="6-多账号消息分发重构"><a href="#6-多账号消息分发重构" class="headerlink" title="6. 多账号消息分发重构"></a>6. 多账号消息分发重构</h2><p>随着业务的发展， 面向的受众不只是携程员工，还接入了许多供应商公司，因此底层消息系统需要处理多账户员工的消息分发，在做万人大群项目时，发现原有多账号消息分发的架构不合理，无法支撑万人大群的业务，因此对该部分进行了重构。</p>
 <h3 id="6-1-多公司组账号查询时机不合理"><a href="#6-1-多公司组账号查询时机不合理" class="headerlink" title="6.1 多公司组账号查询时机不合理"></a>6.1 多公司组账号查询时机不合理</h3><p>原有逻辑将多账号的查询放在了 TCPServer 中，但 dispatcher 调用 TCPServer 是广播模式，造成每一台 TCPServer 机器都需要去查询群成员的多账号信息，人为将查询流量放大了数十倍。</p>
 <h3 id="6-2-多账号缓存数据结构不合理"><a href="#6-2-多账号缓存数据结构不合理" class="headerlink" title="6.2 多账号缓存数据结构不合理"></a>6.2 多账号缓存数据结构不合理</h3><p>查询一个用户的账号信息，需要 4 次 Redis 操作，逻辑过于复杂；改造���，不仅查询某位用户的账号信息只需一次 get，批量查询多个用户账号信息也只需要一次 mget。</p>
 <p>原有的结构，查询 100 个用户的账号信息，会给 Redis 带来 4000（10*4*100）次的访问，现在只需要一次，所以 TCPServer 的多账号逻辑不再成为万人大群的瓶颈。</p>
