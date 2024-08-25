@@ -27,7 +27,7 @@
 <meta property="og:description" content="一、背景为什么做万人大群？1.1 解决系统稳定性问题目前生产存在一百多个五百人以上的大群，在群比较活跃的情况下，系统 CPU 和内存指标会产生较大毛刺，影响系统稳定性。 1.2 用户有大群需求HR 等部门存在一些对于大群的需求，需要满足大量用户同时在线聊天或抢红包的场景。 万人群为何不能简单通过水平扩容解决？2.1 写扩散设计问题原有的写扩散设计中，消息需要按照 1:10000 的比例进行存储，这">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2024-08-07T12:17:23.000Z">
-<meta property="article:modified_time" content="2024-08-25T12:29:22.193Z">
+<meta property="article:modified_time" content="2024-08-25T12:33:53.065Z">
 <meta property="article:author" content="sanjin">
 <meta property="article:tag" content="技术">
 <meta name="twitter:card" content="summary_large_image">
@@ -298,6 +298,7 @@
 <p>系统交互图： 系统交互图</p>
 <h1 id="三、实现方案"><a href="#三、实现方案" class="headerlink" title="三、实现方案"></a>三、实现方案</h1><h2 id="1-引入读扩散机制"><a href="#1-引入读扩散机制" class="headerlink" title="1. 引入读扩散机制"></a>1. 引入读扩散机制</h2><p>现有 IM 群消息系统采用的是写扩散的机制，即每发送一条消息都会给所有群成员写一条数据。这种机制的好处是查询逻辑简单，只需从自身存储的数据队列或表中读取一次。然而，随着群成员人数的增加，消息分发的数量会被放大，例如在万人群中，每发送 1 条消息，��务端消息同步和存储的量就是 10000，消息数量被放大了一万倍。</p>
 <p>对于普通群聊来说，一条消息只会产生一次，但会被读取多次，是典型的读多写少的场景，因此适合采用写扩散的模式。然而，对于大群来说，就需要引入读扩散的模式，即消息只需写一次，相比写扩散的模式，能够大大降低消息写入次数。不过，读扩散模式的缺点是查询会变得复杂。</p>
+
 
 
 
