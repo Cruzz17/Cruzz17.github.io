@@ -27,8 +27,12 @@
 <meta property="og:description" content="一、背景为什么做万人大群？1.1 解决系统稳定性问题目前生产存在一百多个五百人以上的大群，在群比较活跃的情况下，系统 CPU 和内存指标会产生较大毛刺，影响系统稳定性。 1.2 用户有大群需求HR 等部门存在一些对于大群的需求，需要满足大量用户同时在线聊天或抢红包的场景。 万人群为何不能简单通过水平扩容解决？2.1 写扩散设计问题原有的写扩散设计中，消息需要按照 1:10000 的比例进行存储，这">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://cruzz17.github.io/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-1.png">
+<meta property="og:image" content="https://cruzz17.github.io/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-2.png">
+<meta property="og:image" content="https://cruzz17.github.io/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-4.png">
+<meta property="og:image" content="https://cruzz17.github.io/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-5.png">
+<meta property="og:image" content="https://cruzz17.github.io/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-6.png">
 <meta property="article:published_time" content="2024-08-07T12:17:23.000Z">
-<meta property="article:modified_time" content="2024-08-25T12:44:26.607Z">
+<meta property="article:modified_time" content="2024-08-26T02:51:51.915Z">
 <meta property="article:author" content="sanjin">
 <meta property="article:tag" content="技术">
 <meta name="twitter:card" content="summary_large_image">
@@ -300,16 +304,12 @@
 <p>系统交互图： 系统交互图</p>
 <h1 id="三、实现方案"><a href="#三、实现方案" class="headerlink" title="三、实现方案"></a>三、实现方案</h1><h2 id="1-引入读扩散机制"><a href="#1-引入读扩散机制" class="headerlink" title="1. 引入读扩散机制"></a>1. 引入读扩散机制</h2><p>现有 IM 群消息系统采用的是写扩散的机制，即每发送一条消息都会给所有群成员写一条数据。这种机制的好处是查询逻辑简单，只需从自身存储的数据队列或表中读取一次。然而，随着群成员人数的增加，消息分发的数量会被放大，例如在万人群中，每发送 1 条消息，��务端消息同步和存储的量就是 10000，消息数量被放大了一万倍。</p>
 <p>对于普通群聊来说，一条消息只会产生一次，但会被读取多次，是典型的读多写少的场景，因此适合采用写扩散的模式。然而，对于大群来说，就需要引入读扩散的模式，即消息只需写一次，相比写扩散的模式，能够大大降低消息写入次数。不过，读扩散模式的缺点是查询会变得复杂。</p>
-
-
-
-
 <h3 id="读扩散与写扩散机制下的消息存储差异"><a href="#读扩散与写扩散机制下的消息存储差异" class="headerlink" title="读扩散与写扩散机制下的消息存储差异"></a>读扩散与写扩散机制下的消息存储差异</h3><p>当采用读扩散的消息存储方式后，无法像写扩散一样通过一次 Redis 查询获得完整的消息列表。在读扩散模式下，需要对不同类型的消息进行聚合，包括群公共消息、个人消息和个人删除消息等。此外，还需要关注与用户相关的其他数据，例如判断用户是否被踢出群聊以及被踢出的时间���。这些额外的数据需要与消息数据进行关联，以便在查询时进行判断和过滤。总的来说，读扩散模式下的消息存储方式相对复杂，需要进行更多的数据聚合和关联操作，以满足不同类型的查询需求。</p>
-
+<img src="/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-2.png" srcset="/img/loading.gif" lazyload class="">
 
 
 <h3 id="读扩散机制下的缓存差异"><a href="#读扩散机制下的缓存差异" class="headerlink" title="读扩散机制下的缓存差异"></a>读扩散机制下的缓存差异</h3><p>引入读扩散机制后，对业务处理层 SOA 服务的整体结构进行了重构，具体设计如下：</p>
-
+<img src="/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-4.png" srcset="/img/loading.gif" lazyload class="">
 
 
 <ul>
@@ -317,11 +317,11 @@
 <li>读扩散缓存结构：读扩散缓存方案</li>
 </ul>
 <h2 id="2-群成员本地缓存"><a href="#2-群成员本地缓存" class="headerlink" title="2. 群成员本地缓存"></a>2. 群成员本地缓存</h2><p>在 IM 消息系统中，消息分发与存储时都需要查询群成员列表，万人大群的群成员列表，需要的存储空间较大（一个成员占用 200 字节，万人群约占用 2MB）。如果将这些数据存储在 Redis 中，会导致出现 bigKey 问题。因此，我们对大群实现了本地群成员缓存的方案，��时从数据库中拉取数据，并通过监听 qmq 消息对增量数据进行更新，这样可以避免 bigKey 问题的发生��</p>
-
+<img src="/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-5.png" srcset="/img/loading.gif" lazyload class="">
 
 
 <h2 id="3-聚合已读上报"><a href="#3-聚合已读上报" class="headerlink" title="3. 聚合已读上报"></a>3. 聚合已读上报</h2><p>未读数统计的压力会随着群人数和发消息频率的增长而成倍上升。以万人群为例，假设这个群平均每秒有 5 个人发言，那么每秒针对未读数的变更 QPS 就是 5 万。尽管端上有聚合刷新逻辑，但时间间隔只有 200 毫秒，即每个用户每秒最多还是会刷新 5 次。在万人群中，同时在线查看消息时，已读上报的 QPS 依然会达到 5 万。因此，需要对已读上报进行合并，以给定的频次更新数据库和 Redis，从而减轻系统的负载压力。</p>
-
+<img src="/2024/08/07/%E4%B8%87%E4%BA%BA%E5%A4%A7%E7%BE%A4%E6%8A%80%E6%9C%AF%E5%AE%9E%E8%B7%B5%E6%80%BB%E7%BB%93/1-6.png" srcset="/img/loading.gif" lazyload class="">
 
 <h2 id="4-增加限流措施"><a href="#4-增加限流措施" class="headerlink" title="4. 增加限流措施"></a>4. 增加限流措施</h2><p>为了保证服务的稳定性，增加了限流机制，主要考虑个人维度和群维度进行限流。消息限流方案，具体措施如下：</p>
 <ol>
